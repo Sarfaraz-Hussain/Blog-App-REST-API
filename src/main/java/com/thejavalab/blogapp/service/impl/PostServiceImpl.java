@@ -6,7 +6,7 @@ import com.thejavalab.blogapp.payload.PostDto;
 import com.thejavalab.blogapp.payload.PostResponse;
 import com.thejavalab.blogapp.repository.PostRepository;
 import com.thejavalab.blogapp.service.PostService;
-import org.springframework.beans.BeanUtils;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,21 +22,19 @@ public class PostServiceImpl implements PostService {
     @Autowired
     private PostRepository postRepository;
 
+    @Autowired
+    private ModelMapper modelMapper;
+
     @Override
     public PostDto createPost(PostDto postDto) {
 
-        PostDto returnValue = new PostDto();
-        Post post = new Post();
-
         // Convert DTO to Entity
-        BeanUtils.copyProperties(postDto, post);
+        Post post = mapToEntity(postDto);
 
         // Save/Persist Entity in to DB
         Post post1 = postRepository.save(post);
 
-        // Convert Entity to DTO
-        BeanUtils.copyProperties(post1, returnValue);
-        return returnValue;
+        return mapToDto(post1);
     }
 
     @Override
@@ -54,8 +52,7 @@ public class PostServiceImpl implements PostService {
 
         List<PostDto> content = new ArrayList<>();
         for(Post post : listOfPosts) {
-            PostDto postDto = new PostDto();
-            BeanUtils.copyProperties(post, postDto);
+            PostDto postDto = mapToDto(post);
             content.add(postDto);
         }
         PostResponse postResponse = new PostResponse();
@@ -71,21 +68,17 @@ public class PostServiceImpl implements PostService {
     @Override
     public PostDto getPostById(Long id) {
         Post post = postRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Post", "id", id));
-        PostDto returnValue = new PostDto();
-        BeanUtils.copyProperties(post, returnValue);
-        return returnValue;
+        return mapToDto(post);
     }
 
     @Override
     public PostDto updatePost(PostDto postDto, Long id) {
         Post post = postRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Post", "id", id));
-        Long id1 = post.getId();
-        BeanUtils.copyProperties(postDto, post);
-        post.setId(id1);
+        post.setTitle(postDto.getTitle());
+        post.setDescription(postDto.getDescription());
+        post.setContent(postDto.getContent());
         Post response = postRepository.save(post);
-        PostDto returnValue = new PostDto();
-        BeanUtils.copyProperties(response, returnValue);
-        return returnValue;
+        return mapToDto(response);
     }
 
     @Override
@@ -94,5 +87,11 @@ public class PostServiceImpl implements PostService {
         postRepository.delete(post);
     }
 
+    private PostDto mapToDto(Post post) {
+        return modelMapper.map(post, PostDto.class);
+    }
 
+    private Post mapToEntity(PostDto postDto) {
+        return modelMapper.map(postDto, Post.class);
+    }
 }
